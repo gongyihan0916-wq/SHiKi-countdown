@@ -168,11 +168,8 @@ const FN_DEFS=[
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
   {key:'mobius',label:'<i>r</i>(<i>u</i>,<i>v</i>) = ⟨ (<i>R</i>+<i>v</i> cos <i>u</i>/2)cos <i>u</i> ,<br>(<i>R</i>+<i>v</i> cos <i>u</i>/2)sin <i>u</i> , <i>v</i> sin <i>u</i>/2 ⟩',
-    eq:t=>{const s=(Math.random()*2-1)*25,R=60;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
-    desc:'Möbius Strip',thick:14},
-  {key:'pibond',label:'<i>ψ</i>(<b>r</b>) ∝ exp(−|<b>r</b>−<b>r</b>₀|²/2σ²)<br>+ exp(−|<b>r</b>+<b>r</b>₀|²/2σ²)',
-    fn:'pibond',
-    desc:'π-Bond Electron Cloud',thick:0},
+    eq:t=>{const s=(Math.random()*2-1)*12,R=30;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
+    desc:'Möbius Strip',thick:8},
 ];
 
 // ═══════ DISPLAY ITEMS ═══════
@@ -257,17 +254,6 @@ async function init(){
       const traj=[],h=.004;let x=1,y=1,z=1;
       for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
       data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
-    }else if(fn.fn==='pibond'){
-      // π键电子云：两个高斯椭球 (±50 on Y)
-      const pts=[];
-      for(let i=0;i<POINT_COUNT;i++){
-        const lobe=(i<POINT_COUNT/2)?1:-1;
-        // 椭球采样：XZ 方向高斯宽，Y 方向窄
-        const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
-        const rx=35+5*Math.random(),ry=25+3*Math.random(),rz=35+5*Math.random();
-        pts.push(rx*Math.sin(ph)*Math.cos(th),lobe*50+ry*Math.sin(ph)*Math.sin(th),rz*Math.cos(ph));
-      }
-      data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);
     }else{
       data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
     }
