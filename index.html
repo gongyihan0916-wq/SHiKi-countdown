@@ -168,8 +168,8 @@ const FN_DEFS=[
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
   {key:'mobius',label:'<i>r</i>(<i>u</i>,<i>v</i>) = ⟨ (<i>R</i>+<i>v</i> cos <i>u</i>/2)cos <i>u</i> ,<br>(<i>R</i>+<i>v</i> cos <i>u</i>/2)sin <i>u</i> , <i>v</i> sin <i>u</i>/2 ⟩',
-    eq:t=>{const s=(Math.random()*2-1)*12,R=30;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
-    desc:'Möbius Strip',thick:8},
+    eq:t=>{const s=(Math.random()*2-1)*6,R=30;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
+    desc:'Möbius Strip',thick:4},
 ];
 
 // ═══════ DISPLAY ITEMS ═══════
