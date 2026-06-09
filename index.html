@@ -169,7 +169,7 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'<i>z</i>₁⁵ + <i>z</i>₂⁵ = 1<br>Quintic Calabi–Yau Cross-Section',
+  {key:'calabiYau',label:'Real Quintic Calabi–Yau<br><i>x</i>⁵ + <i>y</i>⁵ + <i>z</i>⁵ = 1',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -252,13 +252,15 @@ async function init(){
   items=[];if(ship)items.push({key:'dijiang',label:'DiJiang<br>Originium-powered<br>Multi-surface Vessel',data:ship,desc:'帝江号'});
   for(const fn of FN_DEFS){
     let data;
-    if(fn.fn==='lorenz'){
-      const traj=[],h=.004;let x=1,y=1,z=1;
-      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
-      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
-    }else if(fn.fn=='calabiYau'){const pts=[];const N=200,R=1.5;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const rz1=(i/(N-1)-0.5)*2*R,iz1=(j/(N-1)-0.5)*2*R;const[r5,i5]=cpow5(rz1,iz1);const[rz2,iz2]=croot5(1-r5,-i5);const h=Math.sqrt(rz2*rz2+iz2*iz2);pts.push(rz1*45,iz1*45,h*35-25);}}data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);}else{
-      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
-    }
+    if(fn.fn=='lorenz'){
+	      const traj=[],h=.004;let x=1,y=1,z=1;
+	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
+	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
+	    }else if(fn.fn=='calabiYau'){
+	      const pts=[];let th=0.08;while(pts.length<POINT_COUNT*3){const x=(Math.random()-0.5)*4,y=(Math.random()-0.5)*4,z=(Math.random()-0.5)*4;const f=Math.abs(x*x*x*x*x+y*y*y*y*y+z*z*z*z*z-1);if(f<th)pts.push(x*65+(Math.random()-0.5)*1.5,y*65+(Math.random()-0.5)*1.5,z*65+(Math.random()-0.5)*1.5);if(pts.length>POINT_COUNT*2.7&&th<0.3)th*=1.01;}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	    }else{
+	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
+	    }
     items.push({key:fn.key,label:fn.label,data,desc:fn.desc});
   }
   const init=items[0];for(let i=0;i<POINT_COUNT*3;i++){posA[i]=init.data[i]||0;fromA[i]=init.data[i]||0;}
