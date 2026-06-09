@@ -103,6 +103,8 @@ camera.position.set(0,60,340);
 function makeScatter(c){const a=new Float32Array(c*3);for(let i=0;i<c;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=500+Math.random()*300;a[i*3]=r*Math.sin(ph)*Math.cos(th);a[i*3+1]=r*Math.sin(ph)*Math.sin(th);a[i*3+2]=r*Math.cos(ph);}return a;}
 function makePD(c){const a=new Float32Array(c*3);for(let i=0;i<c;i++){a[i*3]=0.7+Math.random()*0.5;a[i*3+1]=Math.random();a[i*3+2]=Math.random();}return a;}
 function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+	function cpow5(a,b){const a2=a*a,a3=a2*a,a4=a3*a,a5=a4*a;const b2=b*b,b3=b2*b,b4=b3*b,b5=b4*b;return[a5-10*a3*b2+5*a*b4,5*a4*b-10*a2*b3+b5];}
+	function croot5(a,b){const r=Math.pow(a*a+b*b,0.1),th=Math.atan2(b,a)/5;return[r*Math.cos(th),r*Math.sin(th)];}
 
 function processCloud(raw,targetCount,scale=1){
   const n=raw.length/3;let mx=0,my=0,mz=0;
@@ -167,9 +169,9 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'mobius',label:'<i>r</i>(<i>u</i>,<i>v</i>) = ⟨ (<i>R</i>+<i>v</i> cos <i>u</i>/2)cos <i>u</i> ,<br>(<i>R</i>+<i>v</i> cos <i>u</i>/2)sin <i>u</i> , <i>v</i> sin <i>u</i>/2 ⟩',
-    eq:t=>{const s=(Math.random()*2-1)*6,R=30;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
-    desc:'Möbius Strip',thick:4},
+  {key:'calabiYau',label:'<i>z</i>₁⁵ + <i>z</i>₂⁵ = 1<br>Quintic Calabi–Yau Cross-Section',
+	    fn:'calabiYau',
+	    desc:'Calabi-Yau Manifold',thick:0},
 ];
 
 // ═══════ DISPLAY ITEMS ═══════
@@ -254,7 +256,7 @@ async function init(){
       const traj=[],h=.004;let x=1,y=1,z=1;
       for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
       data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
-    }else{
+    }else if(fn.fn=='calabiYau'){const pts=[];const N=200,R=1.5;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const rz1=(i/(N-1)-0.5)*2*R,iz1=(j/(N-1)-0.5)*2*R;const[r5,i5]=cpow5(rz1,iz1);const[rz2,iz2]=croot5(1-r5,-i5);const h=Math.sqrt(rz2*rz2+iz2*iz2);pts.push(rz1*45,iz1*45,h*35-25);}}data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);}else{
       data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
     }
     items.push({key:fn.key,label:fn.label,data,desc:fn.desc});
