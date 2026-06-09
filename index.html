@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>高考倒计时 · 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050308;overflow:hidden;font-family:'Space Mono',monospace;color:#ddd;user-select:none;touch-action:manipulation}
+  #canvas-container{position:fixed;inset:0;z-index:0}
+  canvas{display:block}
+  .countdown-overlay{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .countdown-text{font-family:'Space Mono',monospace;font-weight:700;font-size:18vh;color:#ffe0b0;font-variant-numeric:tabular-nums;white-space:nowrap;line-height:1;text-shadow:0 0 3px rgba(255,160,40,.4);transform-origin:center center}
+  .hud-top{position:fixed;z-index:5;pointer-events:none;top:2rem;left:3rem;right:3rem;display:flex;justify-content:space-between;align-items:flex-start}
+  .hud-top .left{font-size:.52rem;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,170,110,.3)}
+  .hud-top .right{font-size:.8rem;color:rgba(255,210,155,.82);text-align:right;max-width:75%;line-height:1.6;font-family:'Space Mono','Courier New',monospace;text-shadow:0 0 2px rgba(255,160,40,.3);letter-spacing:.02em;font-weight:400}
+  .hud-top .right i{font-style:italic;color:rgba(255,180,130,.7)}
+  .hud-top .right b{font-weight:700;color:rgba(255,190,140,.75)}
+  @media(max-width:768px){.hud-top{left:.8rem;right:.8rem;top:.8rem}}
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div class="countdown-overlay"><div class="countdown-text" id="cd-text">--:--:--:--</div></div>
+<div class="hud-top"><span class="left">3D · GAOKAO</span><span class="right" id="hud-label">DIJIANG</span></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.164.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ═══════ CONFIG ═══════
+const POINT_COUNT    = 40000;
+const SCATTER_OUT_MS = 800;
+const SCATTER_IN_MS  = 1500;
+let   ROT_SPEED      = 0.002;
+const ROT_BASE       = 0.002;
+const CYCLE_MS       = 18000;
+const GAOKAO = new Date('2027-06-07T09:00:00+08:00');
+
+// ═══════ SHADERS ═══════
+const vertShader = `
+attribute vec3 posFrom;
+attribute vec3 scatterPos;
+attribute vec3 pointData;
+uniform float progress;
+uniform float pointSizeScale;
+varying float vAlpha;
+varying vec3 vColor;
+varying float vDA;
+float easeIn(float t){return t*t*t;}
+float easeOut(float t){float u=1.0-t;return 1.0-u*u*u;}
+void main(){
+  float size=pointData.x,delay=pointData.y,stagger=0.30;
+  float p=clamp((progress-delay*stagger)/(1.0-stagger),0.0,1.0);
+  vec3 pos;float alpha;
+  if(p<=0.5){float t=easeIn(p*2.0);pos=mix(posFrom,scatterPos,t);alpha=mix(0.8,0.10,t);}
+  else{float t=easeOut((p-0.5)*2.0);pos=mix(scatterPos,position,t);alpha=mix(0.10,0.8,t);}
+  float sA=1.0-abs(p-0.5)*2.0;
+  vColor=mix(vec3(0.82,0.78,0.72),vec3(0.95,0.55,0.18),sA*0.55);
+  vec4 mv=modelViewMatrix*vec4(pos,1.0);
+  float viewZ=-mv.z;
+  float da=1.0-clamp((viewZ-600.0)/3400.0,0.0,1.0);
+  vAlpha=alpha*da;vDA=da;
+  gl_Position=projectionMatrix*mv;
+  gl_PointSize=size*pointSizeScale*da+1.0;
+}`;
+
+const fragShader = `
+varying float vAlpha,vDA;
+varying vec3 vColor;
+uniform float coreRadius,glowStrength,compressStrength;
+void main(){
+  float dist=length(gl_PointCoord-0.5);
+  if(dist>0.5)discard;
+  float alpha=vAlpha;
+  if(dist>coreRadius*vDA){float f=smoothstep(0.5,coreRadius,dist);alpha=vAlpha*f*(1.0-pow(dist/0.5,2.0));}
+  float g=1.0-smoothstep(0.0,coreRadius*3.0,dist);
+  vec3 col=vColor+vColor*g*glowStrength;
+  col=mix(col,col/(col+vec3(1.0)),compressStrength);
+  gl_FragColor=vec4(col,alpha);
+}`;
+
+// ═══════ THREE SETUP ═══════
+const container=document.getElementById('canvas-container');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:false});
+// WebGL 上下文丢失恢复（长时间运行关键）
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();console.log('GL lost');stopCycle();},false);
+renderer.domElement.addEventListener('webglcontextrestored',()=>{console.log('GL restored');startCycle();},false);
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x06040a);
+const camera=new THREE.PerspectiveCamera(65,window.innerWidth/window.innerHeight,0.1,5000);
+camera.position.set(0,60,340);
+
+// ═══════ HELPERS ═══════
+function makeScatter(c){const a=new Float32Array(c*3);for(let i=0;i<c;i++){const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1),r=500+Math.random()*300;a[i*3]=r*Math.sin(ph)*Math.cos(th);a[i*3+1]=r*Math.sin(ph)*Math.sin(th);a[i*3+2]=r*Math.cos(ph);}return a;}
+function makePD(c){const a=new Float32Array(c*3);for(let i=0;i<c;i++){a[i*3]=0.7+Math.random()*0.5;a[i*3+1]=Math.random();a[i*3+2]=Math.random();}return a;}
+function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
+function processCloud(raw,targetCount,scale=1){
+  const n=raw.length/3;let mx=0,my=0,mz=0;
+  for(let i=0;i<raw.length;i+=3){mx+=raw[i];my+=raw[i+1];mz+=raw[i+2];}mx/=n;my/=n;mz/=n;
+  let maxD=0;for(let i=0;i<raw.length;i+=3){raw[i]-=mx;raw[i+1]-=my;raw[i+2]-=mz;const d=Math.sqrt(raw[i]**2+raw[i+1]**2+raw[i+2]**2);if(d>maxD)maxD=d;}
+  const s=300/maxD*scale;for(let i=0;i<raw.length;i++)raw[i]*=s;
+  if(n<targetCount){const out=new Float32Array(targetCount*3);for(let i=0;i<targetCount;i++){const si=(i%n)*3;out[i*3]=raw[si];out[i*3+1]=raw[si+1];out[i*3+2]=raw[si+2];}return out;}
+  const out=new Float32Array(targetCount*3);const step=n/targetCount;for(let i=0;i<targetCount;i++){const si=Math.min(Math.floor(i*step),n-1)*3;out[i*3]=raw[si];out[i*3+1]=raw[si+1];out[i*3+2]=raw[si+2];}return out;
+}
+
+// ═══════ GEOMETRY + POINTS ═══════
+const group=new THREE.Group();scene.add(group);
+const geo=new THREE.BufferGeometry();
+const posA=new Float32Array(POINT_COUNT*3),fromA=new Float32Array(POINT_COUNT*3);
+const scatA=makeScatter(POINT_COUNT),pdA=makePD(POINT_COUNT);
+geo.setAttribute('position',new THREE.BufferAttribute(posA,3));
+geo.setAttribute('posFrom',new THREE.BufferAttribute(fromA,3));
+geo.setAttribute('scatterPos',new THREE.BufferAttribute(scatA,3));
+geo.setAttribute('pointData',new THREE.BufferAttribute(pdA,3));
+const mat=new THREE.ShaderMaterial({vertexShader:vertShader,fragmentShader:fragShader,uniforms:{progress:{value:1},pointSizeScale:{value:3.5},coreRadius:{value:.08},glowStrength:{value:.4},compressStrength:{value:.5}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+const pointsMesh=new THREE.Points(geo,mat);group.add(pointsMesh);
+
+// ═══════ DATA ═══════
+async function loadShip(){
+  const r=await fetch('models/spaceship.bin');if(!r.ok)throw Error('ship '+r.status);
+  return processCloud(new Float32Array(await r.arrayBuffer()),POINT_COUNT,1.8);
+}
+
+// 参数曲线 → 管状点云（沿曲线采样 + 法向抖动加厚度）
+function curveCloud(eq,count,thick=8,tMin=0,tMax=Math.PI*2){
+  const pts=[];
+  // 均匀弧长采样
+  const N=count*2,dt=(tMax-tMin)/N;
+  const samples=[];for(let i=0;i<=N;i++){const t=tMin+i*dt;samples.push(eq(t));}
+  // 弧长
+  const arclen=[];arclen[0]=0;for(let i=1;i<=N;i++){const dx=samples[i][0]-samples[i-1][0],dy=samples[i][1]-samples[i-1][1],dz=samples[i][2]-samples[i-1][2];arclen[i]=arclen[i-1]+Math.sqrt(dx*dx+dy*dy+dz*dz);}
+  const total=arclen[N]||1,step=total/count;
+  for(let i=0;i<count;i++){
+    const target=i*step;
+    let lo=0,hi=N;while(lo<hi){const m=(lo+hi)>>1;if(arclen[m]<target)lo=m+1;else hi=m;}
+    const t=tMin+lo*dt;
+    const [x,y,z]=eq(t);
+    // 随机抖动制造管状厚度
+    pts.push(x+(Math.random()-.5)*thick,y+(Math.random()-.5)*thick,z+(Math.random()-.5)*thick);
+  }
+  return processCloud(new Float32Array(pts),count,1.0);
+}
+
+const FN_DEFS=[
+  {key:'knot1',label:'<i>r</i>(<i>t</i>) = ⟨ sin <i>t</i> + 2 sin 2<i>t</i> ,<br>cos <i>t</i> − 2 cos 2<i>t</i> , −sin 3<i>t</i> ⟩',
+    eq:t=>{const s=Math.sin(t)+2*Math.sin(2*t),c=Math.cos(t)-2*Math.cos(2*t),z=-Math.sin(3*t);return[s*30,c*30,z*30];},
+    desc:'Trefoil Knot',thick:10},
+  {key:'knot2',label:'<i>r</i>(<i>t</i>) = ⟨ (2+cos 2<i>t</i>)cos 3<i>t</i> ,<br>(2+cos 2<i>t</i>)sin 3<i>t</i> , sin 4<i>t</i> ⟩',
+    eq:t=>{const r=2+Math.cos(2*t),x=r*Math.cos(3*t),y=r*Math.sin(3*t),z=Math.sin(4*t);return[x*25,y*25,z*25];},
+    desc:'Figure-8 Knot',thick:10},
+  {key:'lorenz',label:'ẋ = 10(<i>y</i> − <i>x</i>)<br>ẏ = <i>x</i>(28 − <i>z</i>) − <i>y</i><br>ż = <i>xy</i> − 8<i>z</i>/3',
+    fn:'lorenz',
+    desc:'Lorenz Attractor',thick:6},
+  {key:'torus',label:'<i>r</i>(<i>t</i>) = ⟨ (3+cos 8<i>t</i>)cos 3<i>t</i> ,<br>(3+cos 8<i>t</i>)sin 3<i>t</i> , sin 8<i>t</i> ⟩',
+    eq:t=>{const R=3,r=1,p=3,q=8;const x=(R+r*Math.cos(q*t))*Math.cos(p*t),y=(R+r*Math.cos(q*t))*Math.sin(p*t),z=r*Math.sin(q*t);return[x*35,y*35,z*35];},
+    desc:'Torus Knot (3,8)',thick:8},
+  {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
+    eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
+    desc:'3D Lissajous',thick:5},
+  {key:'mobius',label:'<i>r</i>(<i>u</i>,<i>v</i>) = ⟨ (<i>R</i>+<i>v</i> cos <i>u</i>/2)cos <i>u</i> ,<br>(<i>R</i>+<i>v</i> cos <i>u</i>/2)sin <i>u</i> , <i>v</i> sin <i>u</i>/2 ⟩',
+    eq:t=>{const s=(Math.random()*2-1)*25,R=60;const a=t,b=s;return[Math.cos(a)*(R+b*Math.cos(a/2)),Math.sin(a)*(R+b*Math.cos(a/2)),b*Math.sin(a/2)];},
+    desc:'Möbius Strip',thick:14},
+  {key:'pibond',label:'<i>ψ</i>(<b>r</b>) ∝ exp(−|<b>r</b>−<b>r</b>₀|²/2σ²)<br>+ exp(−|<b>r</b>+<b>r</b>₀|²/2σ²)',
+    fn:'pibond',
+    desc:'π-Bond Electron Cloud',thick:0},
+];
+
+// ═══════ DISPLAY ITEMS ═══════
+let items=[],curIdx=0,switching=false,cycleT=null;
+
+async function switchTo(idx){
+  if(switching||idx===curIdx||!items.length)return;
+  switching=true;curIdx=idx;const item=items[idx];
+  for(let i=0;i<POINT_COUNT*3;i++)fromA[i]=posA[i];geo.attributes.posFrom.needsUpdate=true;
+  for(let i=0;i<POINT_COUNT*3;i++)posA[i]=item.data[i]||0;geo.attributes.position.needsUpdate=true;
+  const ns=makeScatter(POINT_COUNT),np=makePD(POINT_COUNT);
+  for(let i=0;i<POINT_COUNT*3;i++){scatA[i]=ns[i];pdA[i]=np[i];}
+  geo.attributes.scatterPos.needsUpdate=true;geo.attributes.pointData.needsUpdate=true;
+
+  // 旋转加速（同原站：瞬间×8，再回落）
+  const oldS=ROT_SPEED,peak=ROT_BASE*8;
+  const startR=performance.now();
+  function rampUp(){const t=Math.min(1,(performance.now()-startR)/300);ROT_SPEED=oldS+(peak-oldS)*easeInOut(t);if(t<1)requestAnimationFrame(rampUp);}
+  rampUp();
+  setTimeout(()=>{const cs=ROT_SPEED,st=performance.now();function tick(){const t=Math.min(1,(performance.now()-st)/1000);ROT_SPEED=cs+(ROT_BASE-cs)*easeInOut(t);if(t<1)requestAnimationFrame(tick);}requestAnimationFrame(tick);},SCATTER_OUT_MS+700);
+
+  mat.uniforms.progress.value=0;
+  const total=SCATTER_OUT_MS+SCATTER_IN_MS,midR=SCATTER_OUT_MS/total;let uiDone=false;
+  await new Promise(r=>{const start=performance.now();function t(){const e=Math.min(1,(performance.now()-start)/total);let p;if(e<midR){const s=e/midR;p=s*s*.5;}else{const s=(e-midR)/(1-midR);p=.5+(1-(1-s)*(1-s))*.5;}mat.uniforms.progress.value=p;if(!uiDone&&p>=.5){updateUI();uiDone=true;}if(e<1)requestAnimationFrame(t);else r();}requestAnimationFrame(t);});
+  switching=false;if(!uiDone)updateUI();
+}
+function updateUI(){document.getElementById('hud-label').innerHTML=items[curIdx].label;}
+function next(){switchTo((curIdx+1)%items.length);}function prev(){switchTo((curIdx-1+items.length)%items.length);}
+function startCycle(){cycleT=setInterval(next,CYCLE_MS);}function stopCycle(){if(cycleT){clearInterval(cycleT);cycleT=null;}}
+
+// ═══════ COUNTDOWN（精确到秒） ═══════
+const cdEl=document.getElementById('cd-text');
+let prevCD='',lastCDSec=-1,cdFitted=false;
+
+function fitCD(){
+  const vw=window.innerWidth,vh=window.innerHeight;
+  const r=cdEl.getBoundingClientRect();
+  if(r.width>0&&r.height>0)cdEl.style.transform=`scale(${vw/r.width},${vh/r.height})`;
+}
+function updateCD(){
+  const diff=GAOKAO.getTime()-Date.now();if(diff<=0){const t='00:00:00:00';if(t!==prevCD){cdEl.textContent=t;prevCD=t;if(!cdFitted){cdFitted=true;requestAnimationFrame(fitCD);}}return;}
+  const ts=Math.floor(diff/1000);
+  if(ts===lastCDSec)return;lastCDSec=ts;
+  const d=Math.floor(ts/86400),h=Math.floor((ts%86400)/3600),m=Math.floor((ts%3600)/60),s=ts%60;
+  const text=`${String(d).padStart(3,'0')}:${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  if(text!==prevCD){cdEl.textContent=text;prevCD=text;if(!cdFitted){cdFitted=true;requestAnimationFrame(fitCD);}}
+}
+window.addEventListener('resize',fitCD);
+
+// ═══════ CAMERA ═══════
+let dragging=false,dsx=0,dsy=0,tRx=.15,tRy=0,cRx=.15,cRy=0,tZ=340,cZ=340;
+const _ax=new THREE.Vector3(1,0,0),_ay=new THREE.Vector3(0,1,0),_lt=new THREE.Vector3(0,10,0);
+container.addEventListener('mousedown',e=>{dragging=true;dsx=e.clientX;dsy=e.clientY;container.style.cursor='grabbing';});
+window.addEventListener('mousemove',e=>{if(!dragging)return;tRy-=(e.clientX-dsx)*.005;tRx=Math.max(-1.4,Math.min(1.4,tRx-(e.clientY-dsy)*.005));dsx=e.clientX;dsy=e.clientY;});
+window.addEventListener('mouseup',()=>{dragging=false;container.style.cursor='grab';});container.style.cursor='grab';
+container.addEventListener('touchstart',e=>{if(e.touches.length===1){dragging=true;dsx=e.touches[0].clientX;dsy=e.touches[0].clientY;}});
+window.addEventListener('touchmove',e=>{if(!dragging||e.touches.length!==1)return;tRy-=(e.touches[0].clientX-dsx)*.005;tRx=Math.max(-1.4,Math.min(1.4,tRx-(e.touches[0].clientY-dsy)*.005));dsx=e.touches[0].clientX;dsy=e.touches[0].clientY;});
+window.addEventListener('touchend',()=>{dragging=false;});
+container.addEventListener('wheel',e=>{e.preventDefault();tZ*=1+e.deltaY*.001;tZ=Math.max(100,Math.min(1200,tZ));},{passive:false});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowRight'){stopCycle();next();startCycle();}if(e.key==='ArrowUp'||e.key==='ArrowLeft'){stopCycle();prev();startCycle();}if(e.key==='f'||e.key==='F'){if(cycleT)stopCycle();else startCycle();}});
+
+// ═══════ RENDER LOOP ═══════
+function loop(now){
+  requestAnimationFrame(loop);
+  updateCD();
+  cRx+=(tRx-cRx)*.06;cRy+=(tRy-cRy)*.06;cZ+=(tZ-cZ)*.06;
+  camera.position.set(0,0,cZ);camera.position.applyAxisAngle(_ax,cRx);camera.position.applyAxisAngle(_ay,cRy);
+  const dt=now*.0003;camera.position.x+=Math.sin(dt*1.1)*4;camera.position.y+=Math.cos(dt*1.4)*3;
+  camera.lookAt(_lt);
+  if(!dragging){tRy+=ROT_SPEED;tRy%=Math.PI*2;} // 防溢出
+  renderer.render(scene,camera);
+}
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+// ═══════ INIT ═══════
+async function init(){
+  let ship=null;try{ship=await loadShip();}catch(e){console.error('Ship:',e);}
+  items=[];if(ship)items.push({key:'dijiang',label:'DiJiang<br>Originium-powered<br>Multi-surface Vessel',data:ship,desc:'帝江号'});
+  for(const fn of FN_DEFS){
+    let data;
+    if(fn.fn==='lorenz'){
+      const traj=[],h=.004;let x=1,y=1,z=1;
+      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
+      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
+    }else if(fn.fn==='pibond'){
+      // π键电子云：两个高斯椭球 (±50 on Y)
+      const pts=[];
+      for(let i=0;i<POINT_COUNT;i++){
+        const lobe=(i<POINT_COUNT/2)?1:-1;
+        // 椭球采样：XZ 方向高斯宽，Y 方向窄
+        const th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+        const rx=35+5*Math.random(),ry=25+3*Math.random(),rz=35+5*Math.random();
+        pts.push(rx*Math.sin(ph)*Math.cos(th),lobe*50+ry*Math.sin(ph)*Math.sin(th),rz*Math.cos(ph));
+      }
+      data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);
+    }else{
+      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
+    }
+    items.push({key:fn.key,label:fn.label,data,desc:fn.desc});
+  }
+  const init=items[0];for(let i=0;i<POINT_COUNT*3;i++){posA[i]=init.data[i]||0;fromA[i]=init.data[i]||0;}
+  geo.attributes.position.needsUpdate=true;geo.attributes.posFrom.needsUpdate=true;mat.uniforms.progress.value=1;
+  updateUI();updateCD();
+  startCycle();requestAnimationFrame(loop);
+}
+init().catch(e=>console.error('Init:',e));
+</script>
+</body>
+</html>
