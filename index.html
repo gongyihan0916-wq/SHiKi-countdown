@@ -169,7 +169,7 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'Real Quintic Calabi–Yau<br><i>x</i>⁵ + <i>y</i>⁵ + <i>z</i>⁵ = 1',
+  {key:'calabiYau',label:'Quintic in ℝ⁴ → ℝ³<br>Stereographic Projection',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -257,7 +257,7 @@ async function init(){
 	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
 	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
 	    }else if(fn.fn=='calabiYau'){
-	      const pts=[];let th=0.08;while(pts.length<POINT_COUNT*3){const x=(Math.random()-0.5)*4,y=(Math.random()-0.5)*4,z=(Math.random()-0.5)*4;const f=Math.abs(x*x*x*x*x+y*y*y*y*y+z*z*z*z*z-1);if(f<th)pts.push(x*65+(Math.random()-0.5)*1.5,y*65+(Math.random()-0.5)*1.5,z*65+(Math.random()-0.5)*1.5);if(pts.length>POINT_COUNT*2.7&&th<0.3)th*=1.01;}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	      const pts=[];const N=200,R=1.3,W=0.55,a=0.8,b=0.5;const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);for(let i=0;i<N;i++){for(let j=0;j<N;j++){const u=(i/(N-1)-0.5)*2*R,v=(j/(N-1)-0.5)*2*R;const rd=1-u*u*u*u*u-v*v*v*v*v-W*W*W*W*W;const w=Math.sign(rd)*Math.pow(Math.abs(rd),0.2);const y1=v*ca-w*sa,y2=v*sa+w*ca;const z1=y1*cb-u*sb,z2=y1*sb+u*cb;pts.push(u*55+(Math.random()-0.5)*1.5,y2*55+(Math.random()-0.5)*1.5,z1*55+(Math.random()-0.5)*1.5);}}data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);
 	    }else{
 	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
 	    }
