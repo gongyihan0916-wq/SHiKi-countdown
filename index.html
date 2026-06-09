@@ -242,7 +242,7 @@ function loop(now){
   camera.position.set(0,0,cZ);camera.position.applyAxisAngle(_ax,cRx);camera.position.applyAxisAngle(_ay,cRy);
   const dt=now*.0003;camera.position.x+=Math.sin(dt*1.1)*4;camera.position.y+=Math.cos(dt*1.4)*3;
   camera.lookAt(_lt);
-  if(!dragging){tRy+=ROT_SPEED;tRy%=Math.PI*2;} // 防溢出
+  if(!dragging){tRy+=ROT_SPEED;}
   renderer.render(scene,camera);
 }
 window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
