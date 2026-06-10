@@ -127,7 +127,7 @@ geo.setAttribute('position',new THREE.BufferAttribute(posA,3));
 geo.setAttribute('posFrom',new THREE.BufferAttribute(fromA,3));
 geo.setAttribute('scatterPos',new THREE.BufferAttribute(scatA,3));
 geo.setAttribute('pointData',new THREE.BufferAttribute(pdA,3));
-const mat=new THREE.ShaderMaterial({vertexShader:vertShader,fragmentShader:fragShader,uniforms:{progress:{value:1},pointSizeScale:{value:3.5},coreRadius:{value:.08},glowStrength:{value:.4},compressStrength:{value:.5}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
+const mat=new THREE.ShaderMaterial({vertexShader:vertShader,fragmentShader:fragShader,uniforms:{progress:{value:1},pointSizeScale:{value:3.5},coreRadius:{value:.08},glowStrength:{value:.48},compressStrength:{value:.5}},transparent:true,depthWrite:false,blending:THREE.AdditiveBlending});
 const pointsMesh=new THREE.Points(geo,mat);group.add(pointsMesh);
 
 // ═══════ DATA ═══════
