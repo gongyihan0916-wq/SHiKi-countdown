@@ -157,16 +157,16 @@ function curveCloud(eq,count,thick=8,tMin=0,tMax=Math.PI*2){
 }
 
 const FN_DEFS=[
-  {key:'knot1',label:'<i>r</i>(<i>t</i>) = ⟨ sin <i>t</i> + 2 sin 2<i>t</i> ,<br>cos <i>t</i> − 2 cos 2<i>t</i> , −sin 3<i>t</i> ⟩',
+  {key:'knot1',label:'$\\text{Trefoil Knot}\\newline \\mathbf{r}(t)=\\langle \\sin t+2\\sin 2t,\\ \\cos t-2\\cos 2t,\\ -\\sin 3t\\rangle$',
     eq:t=>{const s=Math.sin(t)+2*Math.sin(2*t),c=Math.cos(t)-2*Math.cos(2*t),z=-Math.sin(3*t);return[s*30,c*30,z*30];},
     desc:'Trefoil Knot',thick:10},
   {key:'barth',label:'$\\text{Barth Sextic}\\newline 4(\\tau^2 x^2-y^2)(\\tau^2 y^2-z^2)(\\tau^2 z^2-x^2)=(1+2\\tau)(r^2-1)^2$',
     fn:'barth',
     desc:'Barth Sextic',thick:0},
-  {key:'lorenz',label:'ẋ = 10(<i>y</i> − <i>x</i>)<br>ẏ = <i>x</i>(28 − <i>z</i>) − <i>y</i><br>ż = <i>xy</i> − 8<i>z</i>/3',
+  {key:'lorenz',label:'$\\text{Lorenz Attractor}\\newline \\dot{x}=10(y-x),\\ \\dot{y}=x(28-z)-y,\\ \\dot{z}=xy-8z/3$',
     fn:'lorenz',
     desc:'Lorenz Attractor',thick:6},
-  {key:'torus',label:'<i>r</i>(<i>t</i>) = ⟨ (3+cos 8<i>t</i>)cos 3<i>t</i> ,<br>(3+cos 8<i>t</i>)sin 3<i>t</i> , sin 8<i>t</i> ⟩',
+  {key:'torus',label:'$\\text{Torus Knot (3,8)}\\newline \\mathbf{r}(t)=\\langle (3+\\cos 8t)\\cos 3t,\\ (3+\\cos 8t)\\sin 3t,\\ \\sin 8t\\rangle$',
     eq:t=>{const R=3,r=1,p=3,q=8;const x=(R+r*Math.cos(q*t))*Math.cos(p*t),y=(R+r*Math.cos(q*t))*Math.sin(p*t),z=r*Math.sin(q*t);return[x*35,y*35,z*35];},
     desc:'Torus Knot (3,8)',thick:8},
   {key:'chmutov',label:'$\\text{Chmutov Octic}\\newline T_8(x)+T_8(y)+T_8(z)=0$',
@@ -252,7 +252,7 @@ window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.inn
 // ═══════ INIT ═══════
 async function init(){
   let ship=null;try{ship=await loadShip();}catch(e){console.error('Ship:',e);}
-  items=[];if(ship)items.push({key:'dijiang',label:'DiJiang<br>Originium-powered<br>Multi-surface Vessel',data:ship,desc:'帝江号'});
+  items=[];if(ship)items.push({key:'dijiang',label:'$\\text{DiJiang}\\newline \\text{Originium-powered}\\newline \\text{Multi-surface Vessel}$',data:ship,desc:'帝江号'});
   for(const fn of FN_DEFS){
     let data;
     if(fn.fn=='lorenz'){
@@ -288,7 +288,7 @@ async function init(){
           const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;
           if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2;
             const pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}
-            const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*2.2,y*55+(Math.random()-0.5)*2.2,z*55+(Math.random()-0.5)*2.2);}
+            const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*3.0,y*55+(Math.random()-0.5)*3.0,z*55+(Math.random()-0.5)*3.0);}
           pz=p;}}}
       data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
     }else{
