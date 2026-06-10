@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SHiKi-Countdown</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#050308;overflow:hidden;font-family:'Space Mono',monospace;color:#ddd;user-select:none;touch-action:manipulation}
@@ -18,6 +20,7 @@
   .hud-top .right i{font-style:italic;color:rgba(255,180,130,.7)}
   .hud-top .right b{font-weight:700;color:rgba(255,190,140,.75)}
   @media(max-width:768px){.hud-top{left:.8rem;right:.8rem;top:.8rem}}
+  .katex{font-size:.72rem!important;line-height:1.5!important}
 </style>
 </head>
 <body>
@@ -157,19 +160,19 @@ const FN_DEFS=[
   {key:'knot1',label:'<i>r</i>(<i>t</i>) = ⟨ sin <i>t</i> + 2 sin 2<i>t</i> ,<br>cos <i>t</i> − 2 cos 2<i>t</i> , −sin 3<i>t</i> ⟩',
     eq:t=>{const s=Math.sin(t)+2*Math.sin(2*t),c=Math.cos(t)-2*Math.cos(2*t),z=-Math.sin(3*t);return[s*30,c*30,z*30];},
     desc:'Trefoil Knot',thick:10},
-  {key:'knot2',label:'<i>r</i>(<i>t</i>) = ⟨ (2+cos 2<i>t</i>)cos 3<i>t</i> ,<br>(2+cos 2<i>t</i>)sin 3<i>t</i> , sin 4<i>t</i> ⟩',
-    eq:t=>{const r=2+Math.cos(2*t),x=r*Math.cos(3*t),y=r*Math.sin(3*t),z=Math.sin(4*t);return[x*25,y*25,z*25];},
-    desc:'Figure-8 Knot',thick:10},
+  {key:'kummer',label:'$\\text{Kummer Quartic}\\newline (r^2-\\mu^2)^2-\\lambda pqr=0$',
+    fn:'kummer',
+    desc:'Kummer Surface',thick:0},
   {key:'lorenz',label:'ẋ = 10(<i>y</i> − <i>x</i>)<br>ẏ = <i>x</i>(28 − <i>z</i>) − <i>y</i><br>ż = <i>xy</i> − 8<i>z</i>/3',
     fn:'lorenz',
     desc:'Lorenz Attractor',thick:6},
   {key:'torus',label:'<i>r</i>(<i>t</i>) = ⟨ (3+cos 8<i>t</i>)cos 3<i>t</i> ,<br>(3+cos 8<i>t</i>)sin 3<i>t</i> , sin 8<i>t</i> ⟩',
     eq:t=>{const R=3,r=1,p=3,q=8;const x=(R+r*Math.cos(q*t))*Math.cos(p*t),y=(R+r*Math.cos(q*t))*Math.sin(p*t),z=r*Math.sin(q*t);return[x*35,y*35,z*35];},
     desc:'Torus Knot (3,8)',thick:8},
-  {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
-    eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
-    desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'Asymmetric Deformed Quintic<br>3-axis complex offsets + coupling, R=1.9',
+  {key:'chmutov',label:'$\\text{Chmutov Octic}\\newline T_8(x)+T_8(y)+T_8(z)=0$',
+    fn:'chmutov',
+    desc:'Chmutov Surface',thick:0},
+  {key:'calabiYau',label:'$\\text{Deformed Quintic CY}\\newline \\operatorname{Re}[(z_1+ia_1)^5+(z_2+ia_2)^5+(z_3+ia_3)^5+\\varepsilon\\cdots]=0$',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -198,7 +201,7 @@ async function switchTo(idx){
   await new Promise(r=>{const start=performance.now();function t(){const e=Math.min(1,(performance.now()-start)/total);let p;if(e<midR){const s=e/midR;p=s*s*.5;}else{const s=(e-midR)/(1-midR);p=.5+(1-(1-s)*(1-s))*.5;}mat.uniforms.progress.value=p;if(!uiDone&&p>=.5){updateUI();uiDone=true;}if(e<1)requestAnimationFrame(t);else r();}requestAnimationFrame(t);});
   switching=false;if(!uiDone)updateUI();
 }
-function updateUI(){document.getElementById('hud-label').innerHTML=items[curIdx].label;}
+function updateUI(){const l=items[curIdx].label;if(l.startsWith('$')){try{katex.render(l.slice(1,-1),document.getElementById('hud-label'),{throwOnError:false,displayMode:true});}catch(e){document.getElementById('hud-label').innerHTML=l;}}else{document.getElementById('hud-label').innerHTML=l;}}
 function next(){switchTo((curIdx+1)%items.length);}function prev(){switchTo((curIdx-1+items.length)%items.length);}
 function startCycle(){cycleT=setInterval(next,CYCLE_MS);}function stopCycle(){if(cycleT){clearInterval(cycleT);cycleT=null;}}
 
@@ -256,7 +259,94 @@ async function init(){
 	      const traj=[],h=.004;let x=1,y=1,z=1;
 	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
 	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
-	    }else if(fn.fn=='calabiYau'){
+	    }else if(fn.fn=='kummer'){
+	      const pts=[];const mu2=1.2,la=0.9;let th=0.4;while(pts.length<POINT_COUNT*3){
+	        const x=(Math.random()-0.5)*4.5,y=(Math.random()-0.5)*4.5,z=(Math.random()-0.5)*4.5;
+	        const r2=x*x+y*y+z*z;const p=(r2-mu2)*(r2-mu2);
+	        const q=(3*x*x-y*y-z*z)*(3*y*y-z*z-x*x)*(3*z*z-x*x-y*y);
+	        const f=Math.abs(p-la*q);if(f<th)pts.push(x*42+(Math.random()-0.5)*2,y*42+(Math.random()-0.5)*2,z*42+(Math.random()-0.5)*2);
+	        if(pts.length>POINT_COUNT*2.5&&th<1.5)th*=1.005;
+	      }
+	      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	    }else if(fn.fn=='chmutov'){
+	      const pts=[];const t8=v=>{const v2=v*v,v4=v2*v2;return 128*v4*v4-256*v4*v2+160*v4-32*v2+1;};
+	      let th=0.08;while(pts.length<POINT_COUNT*3){
+	        const x=(Math.random()-0.5)*2.2,y=(Math.random()-0.5)*2.2,z=(Math.random()-0.5)*2.2;
+	        const f=Math.abs(t8(x)+t8(y)+t8(z));if(f<th)pts.push(x*85+(Math.random()-0.5)*2,y*85+(Math.random()-0.5)*2,z*85+(Math.random()-0.5)*2);
+	        if(pts.length>POINT_COUNT*2.6&&th<0.4)th*=1.004;
+	      }
+	      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+    }else if(fn.fn=='kummer'){
+      const pts=[];const mu2=1.2,la=0.9;let th=0.4;while(pts.length<POINT_COUNT*3){
+        const x=(Math.random()-0.5)*4.5,y=(Math.random()-0.5)*4.5,z=(Math.random()-0.5)*4.5;
+        const r2=x*x+y*y+z*z;const p=(r2-mu2)*(r2-mu2);
+        const q=(3*x*x-y*y-z*z)*(3*y*y-z*z-x*x)*(3*z*z-x*x-y*y);
+        const f=Math.abs(p-la*q);if(f<th)pts.push(x*42+(Math.random()-0.5)*2,y*42+(Math.random()-0.5)*2,z*42+(Math.random()-0.5)*2);
+        if(pts.length>POINT_COUNT*2.5&&th<1.5)th*=1.005;
+      }
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+    }else if(fn.fn=='chmutov'){
+      const pts=[];const t8=v=>{const v2=v*v,v4=v2*v2;return 128*v4*v4-256*v4*v2+160*v4-32*v2+1;};
+      let th=0.08;while(pts.length<POINT_COUNT*3){
+        const x=(Math.random()-0.5)*2.2,y=(Math.random()-0.5)*2.2,z=(Math.random()-0.5)*2.2;
+        const f=Math.abs(t8(x)+t8(y)+t8(z));if(f<th)pts.push(x*85+(Math.random()-0.5)*2,y*85+(Math.random()-0.5)*2,z*85+(Math.random()-0.5)*2);
+        if(pts.length>POINT_COUNT*2.6&&th<0.4)th*=1.004;
+      }
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+    }else if(fn.fn=='kummer'){
+      const pts=[];const mu2=1.2,la=0.9;let th=0.4;while(pts.length<POINT_COUNT*3){
+        const x=(Math.random()-0.5)*4.5,y=(Math.random()-0.5)*4.5,z=(Math.random()-0.5)*4.5;
+        const r2=x*x+y*y+z*z;const p=(r2-mu2)*(r2-mu2);
+        const q=(3*x*x-y*y-z*z)*(3*y*y-z*z-x*x)*(3*z*z-x*x-y*y);
+        const f=Math.abs(p-la*q);if(f<th)pts.push(x*42+(Math.random()-0.5)*2,y*42+(Math.random()-0.5)*2,z*42+(Math.random()-0.5)*2);
+        if(pts.length>POINT_COUNT*2.5&&th<1.5)th*=1.005;
+      }
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+    }else if(fn.fn=='chmutov'){
+      const pts=[];const t8=v=>{const v2=v*v,v4=v2*v2;return 128*v4*v4-256*v4*v2+160*v4-32*v2+1;};
+      let th=0.08;while(pts.length<POINT_COUNT*3){
+        const x=(Math.random()-0.5)*2.2,y=(Math.random()-0.5)*2.2,z=(Math.random()-0.5)*2.2;
+        const f=Math.abs(t8(x)+t8(y)+t8(z));if(f<th)pts.push(x*85+(Math.random()-0.5)*2,y*85+(Math.random()-0.5)*2,z*85+(Math.random()-0.5)*2);
+        if(pts.length>POINT_COUNT*2.6&&th<0.4)th*=1.004;
+      }
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+    }else if(fn.fn=='calabiYau'){
+      const pts=[];const ax=1.4,ay=1.1,az=1.35,A=0.45;const ax2=ax*ax,ax4=ax2*ax2,ay2=ay*ay,ay4=ay2*ay2,az2=az*az,az4=az2*az2;
+      const N=165,R=1.9;for(let i=0;i<N;i++){for(let j=0;j<N;j++){
+        const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;
+        const K0=x*x*x*x*x-10*ax2*x*x*x+5*ax4*x+y*y*y*y*y-10*ay2*y*y*y+5*ay4*y;
+        const c1=5*az4+A*(x*x-y*y),c2=A*x*y,c3=-10*az2;
+        let pz=1/0;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;
+          const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;
+          if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2;
+            const pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}
+            const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}
+          pz=p;}}}
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+      const pts=[];const ax=1.4,ay=1.1,az=1.35,A=0.45;const ax2=ax*ax,ax4=ax2*ax2,ay2=ay*ay,ay4=ay2*ay2,az2=az*az,az4=az2*az2;
+      const N=165,R=1.9;for(let i=0;i<N;i++){for(let j=0;j<N;j++){
+        const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;
+        const K0=x*x*x*x*x-10*ax2*x*x*x+5*ax4*x+y*y*y*y*y-10*ay2*y*y*y+5*ay4*y;
+        const c1=5*az4+A*(x*x-y*y),c2=A*x*y,c3=-10*az2;
+        let pz=1/0;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;
+          const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;
+          if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2;
+            const pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}
+            const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}
+          pz=p;}}}
+      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	      const pts=[];const ax=1.4,ay=1.1,az=1.35,A=0.45;const ax2=ax*ax,ax4=ax2*ax2,ay2=ay*ay,ay4=ay2*ay2,az2=az*az,az4=az2*az2;
+	      const N=165,R=1.9;for(let i=0;i<N;i++){for(let j=0;j<N;j++){
+	        const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;
+	        const K0=x*x*x*x*x-10*ax2*x*x*x+5*ax4*x+y*y*y*y*y-10*ay2*y*y*y+5*ay4*y;
+	        const c1=5*az4+A*(x*x-y*y),c2=A*x*y,c3=-10*az2;
+	        let pz=1/0;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;
+	          const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;
+	          if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2;
+	            const pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}
+	            const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}
+	          pz=p;}}}
+	      data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
 	      const pts=[];const ax=1.4,ay=1.1,az=1.35,A=0.45;const ax2=ax*ax,ax4=ax2*ax2,ay2=ay*ay,ay4=ay2*ay2,az2=az*az,az4=az2*az2;const N=165,R=1.9;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K0=x*x*x*x*x-10*ax2*x*x*x+5*ax4*x+y*y*y*y*y-10*ay2*y*y*y+5*ay4*y;const c1=5*az4+A*(x*x-y*y),c2=A*x*y,c3=-10*az2;let pz=Infinity;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2,pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}pz=p;}}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
 	    }else{
 	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
