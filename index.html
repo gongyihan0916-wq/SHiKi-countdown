@@ -169,7 +169,7 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'Re[(x+0.7i)⁵+(y+0.7i)⁵+(z+0.7i)⁵]=0<br>Multi-sheet Real Slice',
+  {key:'calabiYau',label:'Re[(x+1.2i)⁵+(y+1.2i)⁵+(z+1.2i)⁵]=0<br>Quintic with 1–5 real sheets',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -257,7 +257,7 @@ async function init(){
 	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
 	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
 	    }else if(fn.fn=='calabiYau'){
-	      const pts=[];const a=0.7,a2=a*a,a4=a2*a2;const N=180,R=1.6;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K=x*x*x*x*x-10*a2*x*x*x+5*a4*x+y*y*y*y*y-10*a2*y*y*y+5*a4*y;const roots=[];let pz=1e9;for(let s=0;s<=200;s++){const zs=-2.5+s*5/200;const p=zs*zs*zs*zs*zs-10*a2*zs*zs*zs+5*a4*zs+K;if(Math.abs(p)<0.02&&zs>-2.4&&zs<2.4)roots.push(zs);if(s>0&&p*pz<=0){let lo=zs-5/200,hi=zs;for(let b=0;b<6;b++){const m=(lo+hi)/2;const pm=m*m*m*m*m-10*a2*m*m*m+5*a4*m+K;if(pz*pm<=0)hi=m;else lo=m;}roots.push((lo+hi)/2);}pz=p;}for(const z of roots)pts.push(x*50+(Math.random()-0.5)*1.2,y*50+(Math.random()-0.5)*1.2,z*50+(Math.random()-0.5)*1.2);}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	      const pts=[];const a=1.2,a2=a*a,a4=a2*a2;const N=140,R=1.5;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K=x*x*x*x*x-10*a2*x*x*x+5*a4*x+y*y*y*y*y-10*a2*y*y*y+5*a4*y;let pz=Infinity;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;const p=zs*zs*zs*zs*zs-10*a2*zs*zs*zs+5*a4*zs+K;if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2,pm=m*m*m*m*m-10*a2*m*m*m+5*a4*m+K;if(pz*pm<=0)hi=m;else lo=m;}const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}pz=p;}}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
 	    }else{
 	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
 	    }
