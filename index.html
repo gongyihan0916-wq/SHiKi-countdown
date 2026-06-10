@@ -169,7 +169,7 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'Quintic in ℝ⁴ → ℝ³<br>Stereographic Projection',
+  {key:'calabiYau',label:'Re[(x+0.7i)⁵+(y+0.7i)⁵+(z+0.7i)⁵]=0<br>Multi-sheet Real Slice',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -257,7 +257,7 @@ async function init(){
 	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
 	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
 	    }else if(fn.fn=='calabiYau'){
-	      const pts=[];const N=200,R=1.3,W=0.55,a=0.8,b=0.5;const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);for(let i=0;i<N;i++){for(let j=0;j<N;j++){const u=(i/(N-1)-0.5)*2*R,v=(j/(N-1)-0.5)*2*R;const rd=1-u*u*u*u*u-v*v*v*v*v-W*W*W*W*W;const w=Math.sign(rd)*Math.pow(Math.abs(rd),0.2);const y1=v*ca-w*sa,y2=v*sa+w*ca;const z1=y1*cb-u*sb,z2=y1*sb+u*cb;pts.push(u*55+(Math.random()-0.5)*1.5,y2*55+(Math.random()-0.5)*1.5,z1*55+(Math.random()-0.5)*1.5);}}data=processCloud(new Float32Array(pts),POINT_COUNT,1.0);
+	      const pts=[];const a=0.7,a2=a*a,a4=a2*a2;const N=180,R=1.6;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K=x*x*x*x*x-10*a2*x*x*x+5*a4*x+y*y*y*y*y-10*a2*y*y*y+5*a4*y;const roots=[];let pz=1e9;for(let s=0;s<=200;s++){const zs=-2.5+s*5/200;const p=zs*zs*zs*zs*zs-10*a2*zs*zs*zs+5*a4*zs+K;if(Math.abs(p)<0.02&&zs>-2.4&&zs<2.4)roots.push(zs);if(s>0&&p*pz<=0){let lo=zs-5/200,hi=zs;for(let b=0;b<6;b++){const m=(lo+hi)/2;const pm=m*m*m*m*m-10*a2*m*m*m+5*a4*m+K;if(pz*pm<=0)hi=m;else lo=m;}roots.push((lo+hi)/2);}pz=p;}for(const z of roots)pts.push(x*50+(Math.random()-0.5)*1.2,y*50+(Math.random()-0.5)*1.2,z*50+(Math.random()-0.5)*1.2);}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
 	    }else{
 	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
 	    }
