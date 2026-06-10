@@ -169,7 +169,7 @@ const FN_DEFS=[
   {key:'liss',label:'<i>r</i>(<i>t</i>) = ⟨ sin(3<i>t</i>+π/2) ,<br>sin 4<i>t</i> , cos 5<i>t</i> ⟩',
     eq:t=>{const x=Math.sin(3*t+Math.PI/2),y=Math.sin(4*t),z=Math.cos(5*t);return[x*60,y*60,z*60];},
     desc:'3D Lissajous',thick:5},
-  {key:'calabiYau',label:'Re[(x+1.2i)⁵+(y+1.2i)⁵+(z+1.2i)⁵]=0<br>Quintic with 1–5 real sheets',
+  {key:'calabiYau',label:'Asymmetric Deformed Quintic<br>3-axis complex offsets + coupling',
 	    fn:'calabiYau',
 	    desc:'Calabi-Yau Manifold',thick:0},
 ];
@@ -257,7 +257,7 @@ async function init(){
 	      for(let i=0;i<30000;i++){const dx=10*(y-x),dy=x*(28-z)-y,dz=x*y-8*z/3;x+=dx*h;y+=dy*h;z+=dz*h;traj.push(x*8,y*8,z*8-200);}
 	      data=processCloud(new Float32Array(traj),POINT_COUNT,1.0);
 	    }else if(fn.fn=='calabiYau'){
-	      const pts=[];const a=1.2,a2=a*a,a4=a2*a2;const N=140,R=1.5;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K=x*x*x*x*x-10*a2*x*x*x+5*a4*x+y*y*y*y*y-10*a2*y*y*y+5*a4*y;let pz=Infinity;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;const p=zs*zs*zs*zs*zs-10*a2*zs*zs*zs+5*a4*zs+K;if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2,pm=m*m*m*m*m-10*a2*m*m*m+5*a4*m+K;if(pz*pm<=0)hi=m;else lo=m;}const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}pz=p;}}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
+	      const pts=[];const ax=1.4,ay=1.1,az=1.35,A=0.45;const ax2=ax*ax,ax4=ax2*ax2,ay2=ay*ay,ay4=ay2*ay2,az2=az*az,az4=az2*az2;const N=165,R=1.5;for(let i=0;i<N;i++){for(let j=0;j<N;j++){const x=(i/(N-1)-0.5)*2*R,y=(j/(N-1)-0.5)*2*R;const K0=x*x*x*x*x-10*ax2*x*x*x+5*ax4*x+y*y*y*y*y-10*ay2*y*y*y+5*ay4*y;const c1=5*az4+A*(x*x-y*y),c2=A*x*y,c3=-10*az2;let pz=Infinity;for(let s=0;s<=400;s++){const zs=-2.5+s*5/400;const p=zs*zs*zs*zs*zs+c3*zs*zs*zs+c2*zs*zs+c1*zs+K0;if(s>0&&p*pz<=0){let lo=zs-5/400,hi=zs;for(let b=0;b<7;b++){const m=(lo+hi)/2,pm=m*m*m*m*m+c3*m*m*m+c2*m*m+c1*m+K0;if(pz*pm<=0)hi=m;else lo=m;}const z=(lo+hi)/2;if(z>-2.4&&z<2.4)pts.push(x*55+(Math.random()-0.5)*1.5,y*55+(Math.random()-0.5)*1.5,z*55+(Math.random()-0.5)*1.5);}pz=p;}}}data=processCloud(new Float32Array(pts.slice(0,POINT_COUNT*3)),POINT_COUNT,1.0);
 	    }else{
 	      data=curveCloud(fn.eq,POINT_COUNT,fn.thick||5);
 	    }
